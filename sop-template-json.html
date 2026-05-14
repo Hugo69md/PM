@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project SOP — Single Page</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500&family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0b0c0e;
+    --bg-elev: #121419;
+    --bg-elev-2: #181b22;
+    --border: #23262e;
+    --border-soft: #1c1f26;
+    --text: #e6e8ee;
+    --text-dim: #9aa0ac;
+    --text-faint: #5e6470;
+    --accent: #d4ff3a;
+    --accent-dim: #8fae22;
+    --danger: #ff6b6b;
+    --ok: #5fd99a;
+    --warn: #ffd166;
+    --c-red:    #ff5d5d;
+    --c-orange: #ff974a;
+    --c-yellow: #ffd84a;
+    --c-green:  #5fd99a;
+    --c-blue:   #5aa8ff;
+    --c-indigo: #8a7dff;
+    --c-violet: #c47aff;
+    --c-black:  #2a2d35;
+    --c-white:  #f1f3f8;
+    --display: 'Fraunces', serif;
+    --body: 'Inter Tight', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:var(--body);font-weight:300;-webkit-font-smoothing:antialiased;line-height:1.55}
+  body{
+    background-image:
+      radial-gradient(800px 400px at 90% -10%, rgba(212,255,58,.04), transparent 60%),
+      radial-gradient(600px 300px at 10% 110%, rgba(90,168,255,.03), transparent 60%);
+    min-height:100vh;
+  }
+  ::selection{background:var(--accent);color:#0b0c0e}
+
+  /* Layout */
+  .layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+  aside{
+    position:sticky;top:0;height:100vh;
+    border-right:1px solid var(--border-soft);
+    background:rgba(11,12,14,.7);
+    backdrop-filter:blur(8px);
+    padding:28px 18px 18px;
+    overflow-y:auto;
+  }
+  aside .brand{font-family:var(--display);font-weight:500;font-size:22px;letter-spacing:-.02em;margin-bottom:4px}
+  aside .brand em{font-style:italic;color:var(--accent)}
+  aside .sub{font-family:var(--mono);font-size:10px;color:var(--text-faint);letter-spacing:.15em;text-transform:uppercase;margin-bottom:28px}
+  aside nav a{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 10px;border-radius:6px;
+    color:var(--text-dim);text-decoration:none;font-size:13px;
+    transition:all .15s;
+    border:1px solid transparent;
+  }
+  aside nav a:hover{color:var(--text);background:var(--bg-elev)}
+  aside nav a.active{color:var(--accent);background:var(--bg-elev);border-color:var(--border)}
+  aside nav a .num{font-family:var(--mono);font-size:10px;color:var(--text-faint);min-width:18px}
+  aside nav a.active .num{color:var(--accent-dim)}
+  aside .toolbar{margin-top:24px;padding-top:20px;border-top:1px solid var(--border-soft);display:flex;flex-direction:column;gap:8px}
+
+  main{padding:48px 56px 120px;max-width:1200px}
+  header.page-head{margin-bottom:48px}
+  header.page-head h1{font-family:var(--display);font-weight:400;font-size:clamp(36px,4vw,56px);letter-spacing:-.03em;line-height:1.05}
+  header.page-head h1 em{font-style:italic;color:var(--accent)}
+  header.page-head .meta{font-family:var(--mono);font-size:11px;color:var(--text-faint);letter-spacing:.1em;text-transform:uppercase;margin-top:8px}
+
+  /* Section blocks */
+  section.block{
+    margin-bottom:36px;
+    border:1px solid var(--border-soft);
+    border-radius:12px;
+    background:var(--bg-elev);
+    overflow:hidden;
+    scroll-margin-top:24px;
+  }
+  section.block .head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 24px;cursor:pointer;
+    border-bottom:1px solid transparent;
+    transition:border-color .15s;
+  }
+  section.block.open .head{border-bottom-color:var(--border-soft)}
+  section.block .head h2{
+    font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:-.02em;
+    display:flex;align-items:baseline;gap:12px;
+  }
+  section.block .head h2 .idx{font-family:var(--mono);font-size:11px;color:var(--text-faint);letter-spacing:.1em}
+  section.block .head .chev{color:var(--text-faint);transition:transform .2s}
+  section.block.open .head .chev{transform:rotate(90deg)}
+  section.block .body{padding:20px 24px 28px;display:none}
+  section.block.open .body{display:block}
+  section.block .body .hint{font-size:12px;color:var(--text-faint);margin-bottom:14px;font-style:italic}
+
+  /* Inputs */
+  textarea, input[type=text], input[type=date], input[type=number], select{
+    width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+    font-family:var(--body);font-size:14px;font-weight:300;
+    padding:10px 12px;border-radius:6px;outline:none;transition:border-color .15s;
+    resize:vertical;
+  }
+  textarea{min-height:90px;line-height:1.6}
+  textarea:focus, input:focus, select:focus{border-color:var(--accent)}
+  label{display:block;font-family:var(--mono);font-size:10px;color:var(--text-faint);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+
+  /* Buttons */
+  button{
+    background:transparent;color:var(--text);border:1px solid var(--border);
+    padding:8px 14px;border-radius:6px;font-family:var(--body);font-size:12px;cursor:pointer;
+    transition:all .15s;font-weight:400;letter-spacing:.02em;
+  }
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button.primary{background:var(--accent);color:#0b0c0e;border-color:var(--accent);font-weight:500}
+  button.primary:hover{background:#e8ff5e;color:#0b0c0e}
+  button.danger{color:var(--danger);border-color:var(--border)}
+  button.danger:hover{border-color:var(--danger)}
+  button.ghost{border-color:transparent;color:var(--text-dim);padding:4px 8px}
+  button.ghost:hover{color:var(--accent);border-color:transparent}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* Tables */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border-soft);vertical-align:top}
+  th{font-family:var(--mono);font-size:10px;color:var(--text-faint);letter-spacing:.1em;text-transform:uppercase;font-weight:500}
+  td input, td textarea, td select{background:transparent;border:1px solid transparent;padding:6px 8px;font-size:13px}
+  td input:hover, td textarea:hover, td select:hover{border-color:var(--border-soft)}
+  td input:focus, td textarea:focus, td select:focus{border-color:var(--accent);background:var(--bg)}
+
+  /* Chips */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:5px 12px;border-radius:999px;
+    background:var(--bg-elev-2);border:1px solid var(--border);
+    font-size:12px;color:var(--text-dim);cursor:pointer;transition:all .15s;
+  }
+  .chip:hover{color:var(--text);border-color:var(--border)}
+  .chip.active{background:var(--accent);color:#0b0c0e;border-color:var(--accent)}
+  .chip .x{font-size:14px;line-height:1;color:var(--text-faint)}
+
+  /* Milestones */
+  .ms-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .ms-col{background:var(--bg);border:1px solid var(--border-soft);border-radius:10px;padding:14px}
+  .ms-col h3{font-family:var(--display);font-weight:500;font-size:15px;letter-spacing:.02em;margin-bottom:4px}
+  .ms-col .tag{font-family:var(--mono);font-size:9px;color:var(--text-faint);letter-spacing:.15em;text-transform:uppercase;margin-bottom:12px}
+  .ms-col[data-stage="mvp"] h3{color:var(--c-yellow)}
+  .ms-col[data-stage="v1"] h3{color:var(--c-blue)}
+  .ms-col[data-stage="final"] h3{color:var(--c-green)}
+  .ms-item{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
+  .ms-item input{flex:1;font-size:13px}
+  .ms-item button{padding:4px 8px;font-size:11px}
+
+  /* WBS */
+  .wbs-stage{margin-bottom:24px}
+  .wbs-stage > .stage-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .wbs-stage > .stage-head h4{font-family:var(--display);font-weight:500;font-size:16px;letter-spacing:-.01em}
+  .wbs-stage[data-stage="mvp"] h4{color:var(--c-yellow)}
+  .wbs-stage[data-stage="v1"] h4{color:var(--c-blue)}
+  .wbs-stage[data-stage="final"] h4{color:var(--c-green)}
+  .wbs-table input{font-size:13px}
+
+  /* Graph editor */
+  .graph-wrap{display:grid;grid-template-columns:180px 1fr;gap:16px;height:520px}
+  .graph-side{background:var(--bg);border:1px solid var(--border-soft);border-radius:10px;padding:14px;overflow-y:auto}
+  .graph-side h5{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px}
+  .graph-side .palette{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:18px}
+  .swatch{aspect-ratio:1;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:border-color .12s}
+  .swatch.active{border-color:var(--accent)}
+  .shape-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:18px}
+  .shape-btn{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--bg-elev-2);border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text-dim)}
+  .shape-btn.active{border-color:var(--accent);color:var(--accent)}
+  .graph-side .task-pick{margin-bottom:14px}
+  .graph-canvas{position:relative;background:var(--bg);border:1px solid var(--border-soft);border-radius:10px;overflow:hidden}
+  .graph-canvas svg{width:100%;height:100%;display:block;cursor:default}
+  .graph-canvas svg.tool-rect, .graph-canvas svg.tool-circle, .graph-canvas svg.tool-diamond, .graph-canvas svg.tool-arrow{cursor:crosshair}
+  .node{cursor:move}
+  .node text{user-select:none;font-family:var(--body);font-size:12px;font-weight:400;pointer-events:none}
+  .node.selected > *:first-child{stroke:var(--accent);stroke-width:2.5}
+  .arrow{stroke-width:1.8;fill:none}
+  .arrow.selected{stroke:var(--accent) !important}
+  .graph-toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .graph-toolbar button{font-size:11px;padding:5px 10px}
+  .graph-toolbar button.active{background:var(--accent);color:#0b0c0e;border-color:var(--accent)}
+
+  /* Gantt */
+  .gantt-wrap{overflow-x:auto;border:1px solid var(--border-soft);border-radius:10px;background:var(--bg)}
+  .gantt{display:grid;font-size:12px;min-width:600px}
+  .gantt .g-head, .gantt .g-row{display:grid;grid-template-columns:240px 80px 1fr;align-items:center;border-bottom:1px solid var(--border-soft)}
+  .gantt .g-head{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);background:var(--bg-elev-2)}
+  .gantt .g-head > div, .gantt .g-row > div{padding:10px 12px}
+  .gantt .g-row .label{display:flex;align-items:center;gap:8px}
+  .gantt .g-row input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+  .gantt .g-row .label.done{text-decoration:line-through;color:var(--text-faint)}
+  .gantt .timeline{position:relative;height:24px;background:linear-gradient(to right,var(--border-soft) 1px,transparent 1px) 0 0/40px 100%}
+  .bar{position:absolute;top:4px;height:16px;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:10px;color:#0b0c0e;font-weight:500;white-space:nowrap;overflow:hidden}
+  .gantt-stage-label{padding:8px 12px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;background:var(--bg-elev-2);color:var(--text-dim);border-bottom:1px solid var(--border-soft)}
+
+  /* Risks/Stakeholders/Decision tables */
+  .row-add{margin-top:10px}
+
+  /* Status pill */
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+  .pill.high{background:rgba(255,107,107,.15);color:var(--danger)}
+  .pill.med{background:rgba(255,209,102,.15);color:var(--warn)}
+  .pill.low{background:rgba(95,217,154,.15);color:var(--ok)}
+
+  /* Notice */
+  .notice{padding:12px 14px;background:var(--bg-elev-2);border:1px solid var(--border-soft);border-radius:8px;font-size:12px;color:var(--text-dim);margin-bottom:14px}
+  .notice b{color:var(--accent);font-weight:500}
+
+  /* Scrollbar */
+  *::-webkit-scrollbar{width:8px;height:8px}
+  *::-webkit-scrollbar-track{background:transparent}
+  *::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  *::-webkit-scrollbar-thumb:hover{background:var(--text-faint)}
+
+  /* Print */
+  @media print{
+    aside{display:none}
+    .layout{grid-template-columns:1fr}
+    main{padding:20px}
+    section.block .body{display:block !important}
+    section.block .chev{display:none}
+    body{background:white;color:black}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="brand">Project <em>SOP</em></div>
+    <div class="sub">Single-Page Spec</div>
+    <nav id="nav"></nav>
+    <div class="toolbar">
+      <button onclick="exportJSON()">↓ Export JSON</button>
+      <button onclick="document.getElementById('importer').click()">↑ Import JSON</button>
+      <button onclick="window.print()">⎙ Print / PDF</button>
+      <button class="danger" onclick="resetAll()">⟲ Reset</button>
+      <input type="file" id="importer" accept=".json" style="display:none" onchange="importJSON(event)">
+    </div>
+  </aside>
+
+  <main>
+    <header class="page-head">
+      <h1>Software Project <em>SOP</em></h1>
+      <div class="meta">Single-page spec · auto-saved locally · export to share</div>
+    </header>
+
+    <div id="sections"></div>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+const DEFAULT_STATE = {
+  meta: { title:'', updated:'' },
+  project: '',
+  goal: '',
+  stakeholders: [],         // {id,name,role,resp,contact}
+  constraints: { tags:['time','money'], note:'' },
+  risks: [],                // {id,desc,likelihood,impact,mitigation}
+  brainstorm: '',
+  techstack: '',
+  milestones: { mvp:[], v1:[], final:[] },  // each: {id,text}
+  wbs: { mvp:[], v1:[], final:[] },         // each: {id,task,owner,est,milestoneId}
+  graphs: {},               // taskId -> {nodes:[], edges:[]}
+  gantt: {},                // taskId -> {start,days,done}
+  decisions: [],            // {id,date,decision,rationale,who}
+  history: { repo:'', commits:'' },
+  glossary: []              // {id,term,def}
+};
+
+const SECTION_DEFS = [
+  { id:'project',      title:'Project',       render:renderProject },
+  { id:'goal',         title:'Goal',          render:renderGoal },
+  { id:'stakeholders', title:'Stakeholders',  render:renderStakeholders },
+  { id:'constraints',  title:'Constraints',   render:renderConstraints },
+  { id:'risks',        title:'Risks',         render:renderRisks },
+  { id:'brainstorm',   title:'Brainstorming', render:renderBrainstorm },
+  { id:'techstack',    title:'Tech Stack',    render:renderTechStack },
+  { id:'milestones',   title:'Milestones',    render:renderMilestones },
+  { id:'wbs',          title:'WBS',           render:renderWBS },
+  { id:'graph',        title:'Graph',         render:renderGraph },
+  { id:'gantt',        title:'Gantt',         render:renderGantt },
+  { id:'decisions',    title:'Decision Log',  render:renderDecisions },
+  { id:'history',      title:'History',       render:renderHistory },
+  { id:'glossary',     title:'Glossary',      render:renderGlossary },
+];
+
+let state = loadState();
+const uid = () => Math.random().toString(36).slice(2,10);
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem('sop-state');
+    if(raw){
+      const parsed = JSON.parse(raw);
+      return Object.assign({}, structuredClone(DEFAULT_STATE), parsed);
+    }
+  }catch(e){}
+  return structuredClone(DEFAULT_STATE);
+}
+function save(){
+  state.meta.updated = new Date().toISOString();
+  localStorage.setItem('sop-state', JSON.stringify(state));
+}
+function resetAll(){
+  if(!confirm('Reset everything? This cannot be undone (export first if you want a backup).')) return;
+  localStorage.removeItem('sop-state');
+  state = structuredClone(DEFAULT_STATE);
+  render();
+}
+function exportJSON(){
+  save();
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `project-sop-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+function importJSON(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const parsed = JSON.parse(r.result);
+      state = Object.assign({}, structuredClone(DEFAULT_STATE), parsed);
+      save(); render();
+    }catch(err){ alert('Invalid JSON file'); }
+  };
+  r.readAsText(f);
+}
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+function render(){
+  // sidebar nav
+  const nav = document.getElementById('nav');
+  nav.innerHTML = SECTION_DEFS.map((s,i)=>(
+    `<a href="#sec-${s.id}" data-target="${s.id}"><span class="num">${String(i+1).padStart(2,'0')}</span>${s.title}</a>`
+  )).join('');
+  nav.querySelectorAll('a').forEach(a=>{
+    a.addEventListener('click',e=>{
+      const id = a.dataset.target;
+      const block = document.getElementById('sec-'+id);
+      if(block && !block.classList.contains('open')) block.classList.add('open');
+    });
+  });
+
+  // sections
+  const root = document.getElementById('sections');
+  root.innerHTML = SECTION_DEFS.map((s,i)=>{
+    return `<section class="block open" id="sec-${s.id}">
+      <div class="head" onclick="toggleSection('${s.id}')">
+        <h2><span class="idx">${String(i+1).padStart(2,'0')}</span>${s.title}</h2>
+        <span class="chev">›</span>
+      </div>
+      <div class="body" id="body-${s.id}"></div>
+    </section>`;
+  }).join('');
+
+  SECTION_DEFS.forEach(s=>{
+    const el = document.getElementById('body-'+s.id);
+    s.render(el);
+  });
+
+  setupScrollSpy();
+}
+function toggleSection(id){
+  document.getElementById('sec-'+id).classList.toggle('open');
+}
+function setupScrollSpy(){
+  const links = document.querySelectorAll('aside nav a');
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(en=>{
+      if(en.isIntersecting){
+        const id = en.target.id.replace('sec-','');
+        links.forEach(l=>l.classList.toggle('active', l.dataset.target===id));
+      }
+    });
+  },{rootMargin:'-30% 0px -65% 0px'});
+  SECTION_DEFS.forEach(s=>{
+    const el = document.getElementById('sec-'+s.id);
+    if(el) obs.observe(el);
+  });
+}
+
+/* ============================================================
+   RENDERERS
+   ============================================================ */
+function renderProject(el){
+  el.innerHTML = `
+    <div class="hint">A one-paragraph description of what this project is.</div>
+    <textarea id="i-project" placeholder="What are we building?">${escapeHtml(state.project)}</textarea>`;
+  document.getElementById('i-project').addEventListener('input',e=>{state.project=e.target.value;save()});
+}
+function renderGoal(el){
+  el.innerHTML = `
+    <div class="hint">Why does this exist? What outcome do we want?</div>
+    <textarea id="i-goal" placeholder="Outcome, success criteria, north star…">${escapeHtml(state.goal)}</textarea>`;
+  document.getElementById('i-goal').addEventListener('input',e=>{state.goal=e.target.value;save()});
+}
+
+function renderStakeholders(el){
+  const rows = state.stakeholders.map((s,i)=>`
+    <tr data-id="${s.id}">
+      <td><input value="${escapeAttr(s.name)}" data-f="name" placeholder="Name"></td>
+      <td><input value="${escapeAttr(s.role)}" data-f="role" placeholder="Role"></td>
+      <td><input value="${escapeAttr(s.resp)}" data-f="resp" placeholder="Responsibility"></td>
+      <td><input value="${escapeAttr(s.contact)}" data-f="contact" placeholder="Email / @"></td>
+      <td><button class="ghost danger" onclick="delStakeholder('${s.id}')">×</button></td>
+    </tr>`).join('');
+  el.innerHTML = `
+    <div class="hint">Who owns, decides, builds, and is informed.</div>
+    <table>
+      <thead><tr><th>Name</th><th>Role</th><th>Responsibility</th><th>Contact</th><th></th></tr></thead>
+      <tbody id="sh-body">${rows}</tbody>
+    </table>
+    <div class="row-add"><button onclick="addStakeholder()">+ Add stakeholder</button></div>`;
+  el.querySelectorAll('#sh-body input').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const id = inp.closest('tr').dataset.id;
+      const s = state.stakeholders.find(x=>x.id===id);
+      s[inp.dataset.f] = inp.value; save();
+    });
+  });
+}
+function addStakeholder(){ state.stakeholders.push({id:uid(),name:'',role:'',resp:'',contact:''}); save(); render(); }
+function delStakeholder(id){ state.stakeholders = state.stakeholders.filter(x=>x.id!==id); save(); render(); }
+
+function renderConstraints(el){
+  const common = ['time','money','scope','quality','team size','technical debt','compliance','third-party'];
+  const active = new Set(state.constraints.tags);
+  el.innerHTML = `
+    <div class="hint">Hard limits within which we operate. Click chips to toggle. Add custom notes below.</div>
+    <div class="chips" id="con-chips">
+      ${common.map(t=>`<div class="chip ${active.has(t)?'active':''}" data-t="${t}">${t}</div>`).join('')}
+    </div>
+    <textarea id="i-con" placeholder="Specifics: deadline 2026-09-01; budget $40k; team of 3…">${escapeHtml(state.constraints.note)}</textarea>`;
+  el.querySelectorAll('#con-chips .chip').forEach(c=>{
+    c.addEventListener('click',()=>{
+      const t = c.dataset.t;
+      const i = state.constraints.tags.indexOf(t);
+      if(i>=0) state.constraints.tags.splice(i,1); else state.constraints.tags.push(t);
+      save(); render();
+    });
+  });
+  document.getElementById('i-con').addEventListener('input',e=>{state.constraints.note=e.target.value;save()});
+}
+
+function renderRisks(el){
+  const lvl = v => `<select data-f="${v}">
+    ${['low','med','high'].map(o=>`<option value="${o}">${o.toUpperCase()}</option>`).join('')}
+  </select>`;
+  const rows = state.risks.map(r=>`
+    <tr data-id="${r.id}">
+      <td><textarea data-f="desc" rows="2" placeholder="What could go wrong?">${escapeHtml(r.desc)}</textarea></td>
+      <td><select data-f="likelihood">${['low','med','high'].map(o=>`<option value="${o}" ${r.likelihood===o?'selected':''}>${o.toUpperCase()}</option>`).join('')}</select></td>
+      <td><select data-f="impact">${['low','med','high'].map(o=>`<option value="${o}" ${r.impact===o?'selected':''}>${o.toUpperCase()}</option>`).join('')}</select></td>
+      <td><textarea data-f="mitigation" rows="2" placeholder="How do we mitigate?">${escapeHtml(r.mitigation)}</textarea></td>
+      <td><button class="ghost danger" onclick="delRisk('${r.id}')">×</button></td>
+    </tr>`).join('');
+  el.innerHTML = `
+    <div class="hint">Distinct from constraints: things that <em>might</em> go wrong and what we'd do about it.</div>
+    <table>
+      <thead><tr><th style="width:35%">Risk</th><th>Likelihood</th><th>Impact</th><th style="width:35%">Mitigation</th><th></th></tr></thead>
+      <tbody id="rk-body">${rows}</tbody>
+    </table>
+    <div class="row-add"><button onclick="addRisk()">+ Add risk</button></div>`;
+  el.querySelectorAll('#rk-body [data-f]').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const id = inp.closest('tr').dataset.id;
+      const r = state.risks.find(x=>x.id===id);
+      r[inp.dataset.f] = inp.value; save();
+    });
+  });
+}
+function addRisk(){ state.risks.push({id:uid(),desc:'',likelihood:'med',impact:'med',mitigation:''}); save(); render(); }
+function delRisk(id){ state.risks = state.risks.filter(x=>x.id!==id); save(); render(); }
+
+function renderBrainstorm(el){
+  el.innerHTML = `
+    <div class="hint">Free-form. Bullet ideas, sketches in text, links, half-baked thoughts.</div>
+    <textarea id="i-brain" style="min-height:220px" placeholder="• idea 1&#10;• idea 2&#10;• …">${escapeHtml(state.brainstorm)}</textarea>`;
+  document.getElementById('i-brain').addEventListener('input',e=>{state.brainstorm=e.target.value;save()});
+}
+
+function renderTechStack(el){
+  el.innerHTML = `
+    <div class="hint">Languages, frameworks, hosting, key services, conventions.</div>
+    <textarea id="i-tech" style="min-height:140px" placeholder="Frontend: ...&#10;Backend: ...&#10;DB: ...&#10;Hosting: ...&#10;Auth: ...">${escapeHtml(state.techstack)}</textarea>`;
+  document.getElementById('i-tech').addEventListener('input',e=>{state.techstack=e.target.value;save()});
+}
+
+function renderMilestones(el){
+  const colHtml = (stage, label, tag) => {
+    const items = state.milestones[stage].map(m=>`
+      <div class="ms-item" data-id="${m.id}">
+        <input value="${escapeAttr(m.text)}" placeholder="Milestone description">
+        <button class="ghost danger" onclick="delMilestone('${stage}','${m.id}')">×</button>
+      </div>`).join('');
+    return `<div class="ms-col" data-stage="${stage}">
+      <h3>${label}</h3>
+      <div class="tag">${tag}</div>
+      <div id="ms-${stage}">${items}</div>
+      <button onclick="addMilestone('${stage}')" style="margin-top:6px;width:100%">+ Add</button>
+    </div>`;
+  };
+  el.innerHTML = `
+    <div class="hint">Define the milestones for each release stage. These flow into the WBS and Gantt.</div>
+    <div class="ms-cols">
+      ${colHtml('mvp','MVP','Minimum viable')}
+      ${colHtml('v1','V1','First full release')}
+      ${colHtml('final','Final','Polished / shipped')}
+    </div>`;
+  el.querySelectorAll('.ms-item input').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const id = inp.closest('.ms-item').dataset.id;
+      const stage = inp.closest('.ms-col').dataset.stage;
+      const m = state.milestones[stage].find(x=>x.id===id);
+      m.text = inp.value; save();
+    });
+  });
+}
+function addMilestone(stage){ state.milestones[stage].push({id:uid(),text:''}); save(); render(); }
+function delMilestone(stage,id){ state.milestones[stage] = state.milestones[stage].filter(x=>x.id!==id); save(); render(); }
+
+function renderWBS(el){
+  const stageHtml = (stage,label) => {
+    const milestones = state.milestones[stage];
+    const tasks = state.wbs[stage];
+    const rows = tasks.map(t=>`
+      <tr data-id="${t.id}">
+        <td><input value="${escapeAttr(t.task)}" data-f="task" placeholder="Task"></td>
+        <td><input value="${escapeAttr(t.owner)}" data-f="owner" placeholder="Owner"></td>
+        <td style="width:90px"><input type="number" min="0" step="0.5" value="${t.est||''}" data-f="est" placeholder="days"></td>
+        <td style="width:200px"><select data-f="milestoneId">
+          <option value="">— milestone —</option>
+          ${milestones.map(m=>`<option value="${m.id}" ${t.milestoneId===m.id?'selected':''}>${escapeHtml(m.text||'(unnamed)')}</option>`).join('')}
+        </select></td>
+        <td style="width:40px"><button class="ghost danger" onclick="delWbs('${stage}','${t.id}')">×</button></td>
+      </tr>`).join('');
+    return `<div class="wbs-stage" data-stage="${stage}">
+      <div class="stage-head"><h4>${label}</h4><button onclick="addWbs('${stage}')">+ Add task</button></div>
+      <table class="wbs-table">
+        <thead><tr><th>Task</th><th>Owner</th><th>Est. (days)</th><th>Milestone</th><th></th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5" style="color:var(--text-faint);font-style:italic;padding:14px">No tasks yet.</td></tr>'}</tbody>
+      </table>
+    </div>`;
+  };
+  el.innerHTML = `
+    <div class="hint">Work Breakdown Structure. Tasks group under stages and link to milestones. Estimates feed the Gantt.</div>
+    ${stageHtml('mvp','MVP')}
+    ${stageHtml('v1','V1')}
+    ${stageHtml('final','Final')}`;
+  el.querySelectorAll('tbody [data-f]').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const id = inp.closest('tr').dataset.id;
+      const stage = inp.closest('.wbs-stage').dataset.stage;
+      const t = state.wbs[stage].find(x=>x.id===id);
+      let v = inp.value;
+      if(inp.dataset.f==='est') v = parseFloat(v)||0;
+      t[inp.dataset.f] = v; save();
+    });
+  });
+}
+function addWbs(stage){ state.wbs[stage].push({id:uid(),task:'',owner:'',est:0,milestoneId:''}); save(); render(); }
+function delWbs(stage,id){
+  state.wbs[stage] = state.wbs[stage].filter(x=>x.id!==id);
+  delete state.graphs[id]; delete state.gantt[id];
+  save(); render();
+}
+
+/* ----------------- GRAPH ----------------- */
+let graphCtx = { taskId:null, tool:'select', color:'#5aa8ff', selectedNode:null, selectedEdge:null, arrowFrom:null, dragging:null, dragOffset:null };
+
+function allTasks(){
+  return ['mvp','v1','final'].flatMap(s=>state.wbs[s].map(t=>({...t,stage:s})));
+}
+
+function renderGraph(el){
+  const tasks = allTasks();
+  if(!graphCtx.taskId && tasks.length) graphCtx.taskId = tasks[0].id;
+  const colors = [
+    ['c-red','var(--c-red)'],['c-orange','var(--c-orange)'],['c-yellow','var(--c-yellow)'],
+    ['c-green','var(--c-green)'],['c-blue','var(--c-blue)'],['c-indigo','var(--c-indigo)'],
+    ['c-violet','var(--c-violet)'],['c-black','var(--c-black)'],['c-white','var(--c-white)']
+  ];
+  el.innerHTML = `
+    <div class="hint">Pick a task, then choose a shape or arrow tool and click on the canvas. Drag shapes to reposition. Double-click a shape to rename.</div>
+    <div class="graph-wrap">
+      <div class="graph-side">
+        <div class="task-pick">
+          <label>Task</label>
+          <select id="g-task">
+            ${tasks.length ? tasks.map(t=>`<option value="${t.id}" ${graphCtx.taskId===t.id?'selected':''}>[${t.stage.toUpperCase()}] ${escapeHtml(t.task||'(unnamed)')}</option>`).join('') : '<option>No tasks yet — add some in WBS</option>'}
+          </select>
+        </div>
+        <h5>Shape</h5>
+        <div class="shape-pick">
+          <div class="shape-btn ${graphCtx.tool==='rect'?'active':''}" data-tool="rect" title="Rectangle">▭</div>
+          <div class="shape-btn ${graphCtx.tool==='circle'?'active':''}" data-tool="circle" title="Circle">●</div>
+          <div class="shape-btn ${graphCtx.tool==='diamond'?'active':''}" data-tool="diamond" title="Diamond">◆</div>
+        </div>
+        <h5>Arrow</h5>
+        <div class="shape-pick" style="grid-template-columns:1fr 1fr">
+          <div class="shape-btn ${graphCtx.tool==='arrow'?'active':''}" data-tool="arrow" title="Arrow">→</div>
+          <div class="shape-btn ${graphCtx.tool==='select'?'active':''}" data-tool="select" title="Select">↖</div>
+        </div>
+        <h5>Color</h5>
+        <div class="palette">
+          ${colors.map(([k,v])=>`<div class="swatch ${graphCtx.color===v?'active':''}" style="background:${v}" data-color="${v}"></div>`).join('')}
+        </div>
+        <button class="danger" style="width:100%" onclick="deleteSelected()">Delete selected</button>
+        <button style="width:100%;margin-top:6px" onclick="clearGraph()">Clear canvas</button>
+      </div>
+      <div class="graph-canvas">
+        <svg id="g-svg" class="tool-${graphCtx.tool}" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <marker id="arrow-end" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+    </div>`;
+
+  document.getElementById('g-task').addEventListener('change',e=>{
+    graphCtx.taskId = e.target.value; graphCtx.selectedNode=null; graphCtx.selectedEdge=null;
+    drawGraph();
+  });
+  el.querySelectorAll('.shape-btn').forEach(b=>{
+    b.addEventListener('click',()=>{
+      graphCtx.tool = b.dataset.tool;
+      graphCtx.arrowFrom = null;
+      el.querySelectorAll('.shape-btn').forEach(x=>x.classList.toggle('active',x===b));
+      document.getElementById('g-svg').setAttribute('class',`tool-${graphCtx.tool}`);
+    });
+  });
+  el.querySelectorAll('.swatch').forEach(s=>{
+    s.addEventListener('click',()=>{
+      graphCtx.color = s.dataset.color;
+      el.querySelectorAll('.swatch').forEach(x=>x.classList.toggle('active',x===s));
+    });
+  });
+
+  setupGraphSvg();
+  drawGraph();
+}
+
+function ensureGraph(){
+  if(!graphCtx.taskId) return null;
+  if(!state.graphs[graphCtx.taskId]) state.graphs[graphCtx.taskId] = {nodes:[],edges:[]};
+  return state.graphs[graphCtx.taskId];
+}
+
+function setupGraphSvg(){
+  const svg = document.getElementById('g-svg');
+  if(!svg) return;
+  svg.addEventListener('click',e=>{
+    if(e.target !== svg) return; // only background clicks
+    const g = ensureGraph(); if(!g) return;
+    const pt = svgPoint(svg,e);
+    if(['rect','circle','diamond'].includes(graphCtx.tool)){
+      g.nodes.push({id:uid(),shape:graphCtx.tool,x:pt.x,y:pt.y,w:120,h:60,color:graphCtx.color,label:'Label'});
+      save(); drawGraph();
+    } else if(graphCtx.tool==='select'){
+      graphCtx.selectedNode = null; graphCtx.selectedEdge = null; drawGraph();
+    }
+  });
+}
+
+function svgPoint(svg,evt){
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function drawGraph(){
+  const svg = document.getElementById('g-svg');
+  if(!svg) return;
+  // clear except defs
+  Array.from(svg.children).forEach(c=>{ if(c.tagName!=='defs') c.remove(); });
+  const g = ensureGraph(); if(!g) return;
+
+  // edges first
+  g.edges.forEach(ed=>{
+    const a = g.nodes.find(n=>n.id===ed.from);
+    const b = g.nodes.find(n=>n.id===ed.to);
+    if(!a||!b) return;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',a.x); line.setAttribute('y1',a.y);
+    line.setAttribute('x2',b.x); line.setAttribute('y2',b.y);
+    line.setAttribute('stroke',ed.color);
+    line.setAttribute('class','arrow'+(graphCtx.selectedEdge===ed.id?' selected':''));
+    line.setAttribute('style',`color:${ed.color}`);
+    line.setAttribute('marker-end','url(#arrow-end)');
+    line.addEventListener('click',e=>{
+      e.stopPropagation();
+      graphCtx.selectedEdge = ed.id; graphCtx.selectedNode = null; drawGraph();
+    });
+    svg.appendChild(line);
+  });
+
+  // nodes
+  g.nodes.forEach(n=>{
+    const grp = document.createElementNS('http://www.w3.org/2000/svg','g');
+    grp.setAttribute('class','node'+(graphCtx.selectedNode===n.id?' selected':''));
+    grp.setAttribute('transform',`translate(${n.x},${n.y})`);
+
+    let shape;
+    if(n.shape==='rect'){
+      shape = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      shape.setAttribute('x',-n.w/2); shape.setAttribute('y',-n.h/2);
+      shape.setAttribute('width',n.w); shape.setAttribute('height',n.h);
+      shape.setAttribute('rx',6);
+    } else if(n.shape==='circle'){
+      shape = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+      shape.setAttribute('cx',0); shape.setAttribute('cy',0);
+      shape.setAttribute('rx',n.w/2); shape.setAttribute('ry',n.h/2);
+    } else if(n.shape==='diamond'){
+      shape = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      shape.setAttribute('points',`0,${-n.h/2} ${n.w/2},0 0,${n.h/2} ${-n.w/2},0`);
+    }
+    shape.setAttribute('fill',n.color);
+    shape.setAttribute('fill-opacity','.18');
+    shape.setAttribute('stroke',n.color);
+    shape.setAttribute('stroke-width','1.5');
+    grp.appendChild(shape);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('dominant-baseline','middle');
+    text.setAttribute('fill','var(--text)');
+    text.textContent = n.label;
+    grp.appendChild(text);
+
+    // events
+    grp.addEventListener('mousedown',e=>{
+      e.stopPropagation();
+      if(graphCtx.tool==='arrow'){
+        if(!graphCtx.arrowFrom){
+          graphCtx.arrowFrom = n.id;
+        } else if(graphCtx.arrowFrom !== n.id){
+          g.edges.push({id:uid(),from:graphCtx.arrowFrom,to:n.id,color:graphCtx.color});
+          graphCtx.arrowFrom = null;
+          save(); drawGraph();
+        }
+      } else if(graphCtx.tool==='select' || ['rect','circle','diamond'].includes(graphCtx.tool)){
+        graphCtx.selectedNode = n.id; graphCtx.selectedEdge = null;
+        const svg = document.getElementById('g-svg');
+        const start = svgPoint(svg,e);
+        graphCtx.dragging = n.id;
+        graphCtx.dragOffset = {x:start.x - n.x, y:start.y - n.y};
+        drawGraph();
+      }
+    });
+    grp.addEventListener('dblclick',e=>{
+      e.stopPropagation();
+      const v = prompt('Label:', n.label);
+      if(v!==null){ n.label = v; save(); drawGraph(); }
+    });
+
+    svg.appendChild(grp);
+  });
+
+  // attach drag handlers on svg if not yet
+  if(!svg._dragWired){
+    svg.addEventListener('mousemove',e=>{
+      if(!graphCtx.dragging) return;
+      const g = ensureGraph(); if(!g) return;
+      const n = g.nodes.find(x=>x.id===graphCtx.dragging); if(!n) return;
+      const pt = svgPoint(svg,e);
+      n.x = pt.x - graphCtx.dragOffset.x;
+      n.y = pt.y - graphCtx.dragOffset.y;
+      drawGraph();
+    });
+    const stopDrag = () => {
+      if(graphCtx.dragging){ save(); graphCtx.dragging=null; graphCtx.dragOffset=null; }
+    };
+    svg.addEventListener('mouseup',stopDrag);
+    svg.addEventListener('mouseleave',stopDrag);
+    svg._dragWired = true;
+  }
+}
+
+function deleteSelected(){
+  const g = ensureGraph(); if(!g) return;
+  if(graphCtx.selectedNode){
+    g.nodes = g.nodes.filter(n=>n.id!==graphCtx.selectedNode);
+    g.edges = g.edges.filter(e=>e.from!==graphCtx.selectedNode && e.to!==graphCtx.selectedNode);
+    graphCtx.selectedNode = null;
+  } else if(graphCtx.selectedEdge){
+    g.edges = g.edges.filter(e=>e.id!==graphCtx.selectedEdge);
+    graphCtx.selectedEdge = null;
+  }
+  save(); drawGraph();
+}
+function clearGraph(){
+  if(!confirm('Clear the entire canvas for this task?')) return;
+  if(graphCtx.taskId){ state.graphs[graphCtx.taskId] = {nodes:[],edges:[]}; save(); drawGraph(); }
+}
+
+/* ----------------- GANTT ----------------- */
+function renderGantt(el){
+  const tasks = allTasks();
+  // compute total days
+  let totalDays = 0;
+  tasks.forEach(t=>{
+    const gt = state.gantt[t.id] || {start:0,days:t.est||1,done:false};
+    state.gantt[t.id] = gt;
+    if(!gt.days && t.est) gt.days = t.est;
+    if(!gt.days) gt.days = 1;
+    totalDays = Math.max(totalDays, gt.start + gt.days);
+  });
+  totalDays = Math.max(totalDays, 14);
+  const colWidth = 28;
+  const stageColors = { mvp:'var(--c-yellow)', v1:'var(--c-blue)', final:'var(--c-green)' };
+
+  const stageHtml = stage => {
+    const stageTasks = tasks.filter(t=>t.stage===stage);
+    if(!stageTasks.length) return '';
+    const label = stage.toUpperCase();
+    const rows = stageTasks.map(t=>{
+      const gt = state.gantt[t.id];
+      const left = gt.start * colWidth;
+      const width = gt.days * colWidth;
+      return `<div class="g-row" data-id="${t.id}">
+        <div class="label ${gt.done?'done':''}">
+          <input type="checkbox" ${gt.done?'checked':''} data-f="done">
+          <span>${escapeHtml(t.task || '(unnamed task)')}</span>
+        </div>
+        <div>
+          <input type="number" min="0" step="0.5" value="${gt.days}" data-f="days" style="width:60px">
+        </div>
+        <div class="timeline" style="width:${totalDays*colWidth}px">
+          <div class="bar" style="left:${left}px;width:${width}px;background:${stageColors[stage]}">${escapeHtml(t.task||'').slice(0,30)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="gantt-stage-label">${label}</div>${rows}`;
+  };
+
+  el.innerHTML = `
+    <div class="hint">Estimates pull from the WBS. Adjust days here; tick to mark complete. Bars stack sequentially by default; edit "start" via shifting days (next iteration: drag).</div>
+    <div class="gantt-wrap">
+      <div class="gantt" style="grid-template-columns:240px 80px ${totalDays*colWidth}px">
+        <div class="g-head">
+          <div>Task</div><div>Days</div>
+          <div style="display:flex;gap:0">
+            ${Array.from({length:totalDays},(_,i)=>`<div style="width:${colWidth}px;text-align:center;font-size:10px;color:var(--text-faint)">${i+1}</div>`).join('')}
+          </div>
+        </div>
+        ${stageHtml('mvp')}${stageHtml('v1')}${stageHtml('final')}
+      </div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px"><button onclick="autoLayoutGantt()">Auto-sequence by stage</button></div>`;
+
+  el.querySelectorAll('.g-row [data-f]').forEach(inp=>{
+    inp.addEventListener('change',e=>{
+      const id = inp.closest('.g-row').dataset.id;
+      const gt = state.gantt[id];
+      if(inp.dataset.f==='done') gt.done = inp.checked;
+      if(inp.dataset.f==='days') gt.days = parseFloat(inp.value)||1;
+      save(); render();
+    });
+  });
+}
+function autoLayoutGantt(){
+  let cursor = 0;
+  ['mvp','v1','final'].forEach(stage=>{
+    state.wbs[stage].forEach(t=>{
+      const gt = state.gantt[t.id] || {days:t.est||1,done:false};
+      gt.start = cursor;
+      cursor += gt.days || 1;
+      state.gantt[t.id] = gt;
+    });
+  });
+  save(); render();
+}
+
+/* ----------------- DECISIONS / HISTORY / GLOSSARY ----------------- */
+function renderDecisions(el){
+  const rows = state.decisions.map(d=>`
+    <tr data-id="${d.id}">
+      <td style="width:130px"><input type="date" value="${escapeAttr(d.date)}" data-f="date"></td>
+      <td><input value="${escapeAttr(d.decision)}" data-f="decision" placeholder="Decision"></td>
+      <td><textarea data-f="rationale" rows="2" placeholder="Why?">${escapeHtml(d.rationale)}</textarea></td>
+      <td style="width:120px"><input value="${escapeAttr(d.who)}" data-f="who" placeholder="Who"></td>
+      <td><button class="ghost danger" onclick="delDecision('${d.id}')">×</button></td>
+    </tr>`).join('');
+  el.innerHTML = `
+    <div class="hint">Append-only log of significant decisions. Future-you (and future teammates) will thank present-you.</div>
+    <table>
+      <thead><tr><th>Date</th><th>Decision</th><th>Rationale</th><th>Who</th><th></th></tr></thead>
+      <tbody id="d-body">${rows}</tbody>
+    </table>
+    <div class="row-add"><button onclick="addDecision()">+ Add decision</button></div>`;
+  el.querySelectorAll('#d-body [data-f]').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const id = inp.closest('tr').dataset.id;
+      const d = state.decisions.find(x=>x.id===id);
+      d[inp.dataset.f] = inp.value; save();
+    });
+  });
+}
+function addDecision(){ state.decisions.push({id:uid(),date:new Date().toISOString().slice(0,10),decision:'',rationale:'',who:''}); save(); render(); }
+function delDecision(id){ state.decisions = state.decisions.filter(x=>x.id!==id); save(); render(); }
+
+function renderHistory(el){
+  el.innerHTML = `
+    <div class="hint">Source of truth lives in Git. Paste the repo URL and a commit log snapshot below.</div>
+    <label>Repository URL</label>
+    <input id="i-repo" value="${escapeAttr(state.history.repo)}" placeholder="https://github.com/org/repo">
+    <label style="margin-top:14px">Commit history (paste output of <span style="font-family:var(--mono);color:var(--accent)">git log --oneline -20</span>)</label>
+    <textarea id="i-commits" style="font-family:var(--mono);min-height:180px;font-size:12px" placeholder="abc1234 Initial commit&#10;def5678 Add auth flow…">${escapeHtml(state.history.commits)}</textarea>`;
+  document.getElementById('i-repo').addEventListener('input',e=>{state.history.repo=e.target.value;save()});
+  document.getElementById('i-commits').addEventListener('input',e=>{state.history.commits=e.target.value;save()});
+}
+
+function renderGlossary(el){
+  const rows = state.glossary.map(g=>`
+    <tr data-id="${g.id}">
+      <td style="width:25%"><input value="${escapeAttr(g.term)}" data-f="term" placeholder="Term"></td>
+      <td><textarea data-f="def" rows="2" placeholder="Definition">${escapeHtml(g.def)}</textarea></td>
+      <td><button class="ghost danger" onclick="delGloss('${g.id}')">×</button></td>
+    </tr>`).join('');
+  el.innerHTML = `
+    <div class="hint">Domain terms. Optional but helpful for new joiners.</div>
+    <table>
+      <thead><tr><th>Term</th><th>Definition</th><th></th></tr></thead>
+      <tbody id="gl-body">${rows}</tbody>
+    </table>
+    <div class="row-add"><button onclick="addGloss()">+ Add term</button></div>`;
+  el.querySelectorAll('#gl-body [data-f]').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const id = inp.closest('tr').dataset.id;
+      const g = state.glossary.find(x=>x.id===id);
+      g[inp.dataset.f] = inp.value; save();
+    });
+  });
+}
+function addGloss(){ state.glossary.push({id:uid(),term:'',def:''}); save(); render(); }
+function delGloss(id){ state.glossary = state.glossary.filter(x=>x.id!==id); save(); render(); }
+
+/* ----------------- UTILS ----------------- */
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+render();
+</script>
+</body>
+</html>

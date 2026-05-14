@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projects — SOP Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500&family=Inter+Tight:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg: #0b0c0e;
+    --bg-elev: #121419;
+    --bg-elev-2: #181b22;
+    --border: #23262e;
+    --border-soft: #1c1f26;
+    --text: #e6e8ee;
+    --text-dim: #9aa0ac;
+    --text-faint: #5e6470;
+    --accent: #d4ff3a;
+    --accent-dim: #8fae22;
+    --danger: #ff6b6b;
+    --ok: #5fd99a;
+    --warn: #ffd166;
+    --display: 'Fraunces', serif;
+    --body: 'Inter Tight', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:var(--body);font-weight:300;-webkit-font-smoothing:antialiased;line-height:1.55}
+  body{
+    background-image:
+      radial-gradient(900px 500px at 90% -10%, rgba(212,255,58,.05), transparent 60%),
+      radial-gradient(700px 400px at 10% 110%, rgba(90,168,255,.04), transparent 60%);
+    min-height:100vh;
+  }
+  ::selection{background:var(--accent);color:#0b0c0e}
+
+  .wrap{max-width:1100px;margin:0 auto;padding:64px 32px 120px}
+  header.hero{margin-bottom:64px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:20px}
+  header.hero .left h1{font-family:var(--display);font-weight:400;font-size:clamp(40px,5vw,72px);letter-spacing:-.03em;line-height:1}
+  header.hero .left h1 em{font-style:italic;color:var(--accent)}
+  header.hero .left .meta{font-family:var(--mono);font-size:11px;color:var(--text-faint);letter-spacing:.12em;text-transform:uppercase;margin-top:14px}
+  header.hero .right{display:flex;gap:10px}
+
+  /* Buttons */
+  button{
+    background:transparent;color:var(--text);border:1px solid var(--border);
+    padding:10px 18px;border-radius:6px;font-family:var(--body);font-size:13px;cursor:pointer;
+    transition:all .15s;font-weight:400;letter-spacing:.02em;
+  }
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button.primary{background:var(--accent);color:#0b0c0e;border-color:var(--accent);font-weight:500}
+  button.primary:hover{background:#e8ff5e;color:#0b0c0e}
+  button.danger{color:var(--danger);border-color:var(--border)}
+  button.danger:hover{border-color:var(--danger)}
+  button.ghost{border-color:transparent;color:var(--text-dim);padding:6px 10px;font-size:12px}
+  button.ghost:hover{color:var(--accent);border-color:transparent;background:var(--bg-elev-2)}
+
+  /* Status */
+  .status{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--text-faint);
+  }
+  .status .dot{width:6px;height:6px;border-radius:50%;background:var(--text-faint)}
+  .status.ok{color:var(--ok)} .status.ok .dot{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+  .status.err{color:var(--danger)} .status.err .dot{background:var(--danger)}
+  .status.loading{color:var(--warn)} .status.loading .dot{background:var(--warn)}
+
+  /* Empty state */
+  .empty{
+    border:1px dashed var(--border);border-radius:14px;
+    padding:80px 32px;text-align:center;background:rgba(255,255,255,.01);
+  }
+  .empty h2{font-family:var(--display);font-weight:400;font-size:28px;letter-spacing:-.02em;margin-bottom:8px}
+  .empty p{color:var(--text-dim);max-width:420px;margin:0 auto 24px;font-size:14px}
+
+  /* Card grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  .card{
+    background:var(--bg-elev);border:1px solid var(--border-soft);border-radius:12px;
+    padding:22px 22px 18px;transition:all .15s;cursor:pointer;
+    display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;
+    text-decoration:none;color:inherit;
+  }
+  .card::before{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(400px 200px at 100% 0%, rgba(212,255,58,.05), transparent 60%);
+    opacity:0;transition:opacity .25s;pointer-events:none;
+  }
+  .card:hover{border-color:var(--border);transform:translateY(-2px)}
+  .card:hover::before{opacity:1}
+  .card .name{font-family:var(--display);font-weight:500;font-size:20px;letter-spacing:-.01em;line-height:1.2}
+  .card .slug{font-family:var(--mono);font-size:10px;color:var(--text-faint);letter-spacing:.08em;text-transform:lowercase;word-break:break-all}
+  .card .footer{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:12px;border-top:1px solid var(--border-soft)}
+  .card .footer .when{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:.05em}
+  .card .footer .actions{display:flex;gap:4px}
+  .card .actions button{padding:4px 8px;font-size:10px}
+
+  /* Setup panel */
+  .setup{
+    background:var(--bg-elev);border:1px solid var(--border);border-radius:14px;
+    padding:32px;margin-bottom:32px;
+  }
+  .setup h3{font-family:var(--display);font-weight:500;font-size:22px;letter-spacing:-.02em;margin-bottom:6px}
+  .setup p{font-size:13px;color:var(--text-dim);margin-bottom:18px;line-height:1.6}
+  .setup label{display:block;font-family:var(--mono);font-size:10px;color:var(--text-faint);letter-spacing:.12em;text-transform:uppercase;margin:14px 0 6px}
+  .setup input{
+    width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+    font-family:var(--body);font-size:14px;font-weight:300;
+    padding:11px 14px;border-radius:6px;outline:none;transition:border-color .15s;
+  }
+  .setup input:focus{border-color:var(--accent)}
+  .setup .btn-row{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap}
+  .setup details{margin-top:20px}
+  .setup summary{cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;padding:8px 0}
+  .setup pre{background:var(--bg);border:1px solid var(--border-soft);padding:14px;border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--text-dim);overflow-x:auto;line-height:1.6;margin:10px 0;white-space:pre-wrap}
+
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);z-index:100;display:none;align-items:center;justify-content:center;padding:24px}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--bg-elev);border:1px solid var(--border);border-radius:14px;padding:32px;max-width:520px;width:100%}
+  .modal h3{font-family:var(--display);font-size:24px;letter-spacing:-.02em;margin-bottom:8px;font-weight:500}
+  .modal p{font-size:13px;color:var(--text-dim);margin-bottom:18px;line-height:1.6}
+  .modal label{display:block;font-family:var(--mono);font-size:10px;color:var(--text-faint);letter-spacing:.12em;text-transform:uppercase;margin:14px 0 6px}
+  .modal input{
+    width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+    font-family:var(--body);font-size:14px;font-weight:300;
+    padding:11px 14px;border-radius:6px;outline:none;transition:border-color .15s;
+  }
+  .modal input:focus{border-color:var(--accent)}
+  .modal .btn-row{margin-top:22px;display:flex;gap:10px;justify-content:flex-end}
+  .modal .err{color:var(--danger);font-size:12px;margin-top:10px}
+  .modal .hint{font-family:var(--mono);font-size:10px;color:var(--text-faint);letter-spacing:.05em;margin-top:6px;line-height:1.6}
+
+  /* Scrollbar */
+  *::-webkit-scrollbar{width:8px;height:8px}
+  *::-webkit-scrollbar-track{background:transparent}
+  *::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  *::-webkit-scrollbar-thumb:hover{background:var(--text-faint)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="left">
+      <h1>Your <em>projects</em></h1>
+      <div class="meta">SOP Workspace · cloud-synced via Supabase</div>
+    </div>
+    <div class="right">
+      <button id="status" class="status"><span class="dot"></span><span id="status-text">Loading…</span></button>
+      <button onclick="openCreds()">⚙ Credentials</button>
+      <button class="primary" id="new-btn" onclick="openCreate()">+ New project</button>
+    </div>
+  </header>
+
+  <div id="setup-panel" class="setup" style="display:none">
+    <h3>First-time setup</h3>
+    <p>Paste your Supabase project URL and anon key to get started. These are saved in this browser only.</p>
+    <label>Supabase URL</label>
+    <input id="setup-url" placeholder="https://xxxx.supabase.co">
+    <label>Anon key</label>
+    <input id="setup-key" placeholder="eyJhbGciOi...">
+
+    <details>
+      <summary>SQL schema — run once in Supabase SQL editor</summary>
+<pre>create table if not exists sop_documents (
+  slug         text primary key,
+  data         jsonb not null,
+  updated_at   timestamptz not null default now()
+);
+
+create table if not exists sop_projects (
+  slug         text primary key,
+  name         text not null,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+alter table sop_documents enable row level security;
+alter table sop_projects  enable row level security;
+
+create policy "anon can read"   on sop_documents for select using (true);
+create policy "anon can insert" on sop_documents for insert with check (true);
+create policy "anon can update" on sop_documents for update using (true);
+create policy "anon can delete" on sop_documents for delete using (true);
+
+create policy "anon can read projects"   on sop_projects for select using (true);
+create policy "anon can insert projects" on sop_projects for insert with check (true);
+create policy "anon can update projects" on sop_projects for update using (true);
+create policy "anon can delete projects" on sop_projects for delete using (true);</pre>
+    </details>
+
+    <div class="btn-row">
+      <button class="primary" onclick="saveCreds()">Save credentials</button>
+    </div>
+  </div>
+
+  <div id="projects-area">
+    <div class="empty"><h2>Loading…</h2></div>
+  </div>
+</div>
+
+<!-- Credentials modal (for changing creds later) -->
+<div class="modal-bg" id="creds-modal">
+  <div class="modal">
+    <h3>Supabase credentials</h3>
+    <p>Stored in this browser only.</p>
+    <label>Supabase URL</label>
+    <input id="creds-url">
+    <label>Anon key</label>
+    <input id="creds-key">
+    <div class="btn-row">
+      <button onclick="closeCreds()">Cancel</button>
+      <button class="primary" onclick="updateCreds()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create-new modal -->
+<div class="modal-bg" id="create-modal">
+  <div class="modal">
+    <h3>New project</h3>
+    <p>Give your project a name. A random slug is generated for the URL.</p>
+    <label>Project name</label>
+    <input id="create-name" placeholder="e.g. Acme website redesign">
+    <label>Slug (auto-generated, can edit)</label>
+    <input id="create-slug" placeholder="auto-generated">
+    <div class="hint">The slug is part of the URL. Long & random = harder to guess.</div>
+    <div class="err" id="create-err" style="display:none"></div>
+    <div class="btn-row">
+      <button onclick="closeCreate()">Cancel</button>
+      <button class="primary" onclick="createProject()">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let supa = null;
+let creds = loadCreds();
+
+function loadCreds(){
+  try{ return JSON.parse(localStorage.getItem('sop-creds')||'null'); }catch(e){ return null; }
+}
+function persistCreds(c){ localStorage.setItem('sop-creds', JSON.stringify(c)); }
+
+function setStatus(kind, text){
+  const el = document.getElementById('status');
+  el.className = 'status ' + kind;
+  document.getElementById('status-text').textContent = text;
+}
+
+/* ---------- credentials setup ---------- */
+function showSetup(){
+  document.getElementById('setup-panel').style.display = 'block';
+  document.getElementById('projects-area').style.display = 'none';
+  document.getElementById('new-btn').disabled = true;
+  document.getElementById('new-btn').style.opacity = '.4';
+}
+function hideSetup(){
+  document.getElementById('setup-panel').style.display = 'none';
+  document.getElementById('projects-area').style.display = 'block';
+  document.getElementById('new-btn').disabled = false;
+  document.getElementById('new-btn').style.opacity = '1';
+}
+async function saveCreds(){
+  const url = document.getElementById('setup-url').value.trim();
+  const key = document.getElementById('setup-key').value.trim();
+  if(!url || !key){ alert('Both fields are required.'); return; }
+  creds = { url, key };
+  persistCreds(creds);
+  hideSetup();
+  await connect();
+}
+
+function openCreds(){
+  document.getElementById('creds-url').value = creds?.url || '';
+  document.getElementById('creds-key').value = creds?.key || '';
+  document.getElementById('creds-modal').classList.add('show');
+}
+function closeCreds(){ document.getElementById('creds-modal').classList.remove('show'); }
+async function updateCreds(){
+  const url = document.getElementById('creds-url').value.trim();
+  const key = document.getElementById('creds-key').value.trim();
+  if(!url || !key){ alert('Both fields are required.'); return; }
+  creds = { url, key };
+  persistCreds(creds);
+  closeCreds();
+  await connect();
+}
+
+/* ---------- supabase ---------- */
+async function connect(){
+  if(!creds){ showSetup(); setStatus('','Not configured'); return; }
+  try{
+    supa = window.supabase.createClient(creds.url, creds.key);
+    setStatus('loading','Loading projects…');
+    await loadProjects();
+  }catch(e){
+    console.error(e);
+    setStatus('err','Connection failed');
+    document.getElementById('projects-area').innerHTML = errorState('Could not initialize Supabase. Check your credentials.');
+  }
+}
+
+async function loadProjects(){
+  try{
+    const { data, error } = await supa.from('sop_projects').select('*').order('updated_at',{ascending:false});
+    if(error) throw error;
+    renderProjects(data || []);
+    setStatus('ok', `${(data||[]).length} project${(data||[]).length===1?'':'s'}`);
+  }catch(e){
+    console.error(e);
+    setStatus('err','Load failed');
+    document.getElementById('projects-area').innerHTML = errorState(
+      'Could not load projects. Most likely cause: the <code>sop_projects</code> table doesn\'t exist yet. Click ⚙ Credentials to see the SQL schema.',
+      e.message
+    );
+  }
+}
+
+function errorState(html, detail){
+  return `<div class="empty">
+    <h2>Something went wrong</h2>
+    <p>${html}</p>
+    ${detail?`<p style="font-family:var(--mono);font-size:11px;color:var(--text-faint);max-width:600px">${escapeHtml(detail)}</p>`:''}
+    <button onclick="connect()">Try again</button>
+  </div>`;
+}
+
+/* ---------- render ---------- */
+function renderProjects(list){
+  const area = document.getElementById('projects-area');
+  if(!list.length){
+    area.innerHTML = `<div class="empty">
+      <h2>No projects yet</h2>
+      <p>Click "+ New project" to start your first SOP. Each project gets its own URL you can bookmark and share.</p>
+      <button class="primary" onclick="openCreate()">+ New project</button>
+    </div>`;
+    return;
+  }
+  area.innerHTML = `<div class="grid">${list.map(p=>cardHtml(p)).join('')}</div>`;
+}
+
+function cardHtml(p){
+  return `<a class="card" href="project.html?slug=${encodeURIComponent(p.slug)}">
+    <div>
+      <div class="name">${escapeHtml(p.name)}</div>
+      <div class="slug">${escapeHtml(p.slug)}</div>
+    </div>
+    <div class="footer">
+      <div class="when">Edited ${timeAgo(p.updated_at)}</div>
+      <div class="actions">
+        <button class="ghost" onclick="event.preventDefault();event.stopPropagation();renameProject('${escapeAttr(p.slug)}','${escapeAttr(p.name)}')">rename</button>
+        <button class="ghost" onclick="event.preventDefault();event.stopPropagation();deleteProject('${escapeAttr(p.slug)}','${escapeAttr(p.name)}')">delete</button>
+      </div>
+    </div>
+  </a>`;
+}
+
+/* ---------- create ---------- */
+function openCreate(){
+  document.getElementById('create-name').value = '';
+  document.getElementById('create-slug').value = randomSlug('project');
+  document.getElementById('create-err').style.display = 'none';
+  document.getElementById('create-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('create-name').focus(), 50);
+
+  // Auto-update slug as user types name (until they manually edit slug)
+  const nameInp = document.getElementById('create-name');
+  const slugInp = document.getElementById('create-slug');
+  let slugDirty = false;
+  slugInp.addEventListener('input', ()=>{ slugDirty = true; });
+  nameInp.addEventListener('input', ()=>{
+    if(slugDirty) return;
+    const base = nameInp.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,30);
+    slugInp.value = base ? `${base}-${randomSuffix()}` : randomSlug('project');
+  });
+}
+function closeCreate(){ document.getElementById('create-modal').classList.remove('show'); }
+
+function randomSuffix(){ return Math.random().toString(36).slice(2,8); }
+function randomSlug(prefix){ return `${prefix}-${randomSuffix()}`; }
+
+async function createProject(){
+  const name = document.getElementById('create-name').value.trim();
+  const slug = document.getElementById('create-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-');
+  const err = document.getElementById('create-err');
+  err.style.display = 'none';
+
+  if(!name){ err.textContent='Name is required.'; err.style.display='block'; return; }
+  if(!slug){ err.textContent='Slug is required.'; err.style.display='block'; return; }
+
+  try{
+    // Check slug isn't taken
+    const { data: exists } = await supa.from('sop_projects').select('slug').eq('slug', slug).maybeSingle();
+    if(exists){ err.textContent='Slug already taken — pick another.'; err.style.display='block'; return; }
+
+    const now = new Date().toISOString();
+    const { error: e1 } = await supa.from('sop_projects').insert({ slug, name, created_at: now, updated_at: now });
+    if(e1) throw e1;
+    // Seed empty document so the editor finds a row immediately
+    const { error: e2 } = await supa.from('sop_documents').insert({ slug, data: {}, updated_at: now });
+    if(e2) throw e2;
+
+    closeCreate();
+    // Navigate to the new project
+    window.location.href = `project.html?slug=${encodeURIComponent(slug)}`;
+  }catch(e){
+    err.textContent = 'Create failed: ' + (e.message || e);
+    err.style.display = 'block';
+  }
+}
+
+/* ---------- rename / delete ---------- */
+async function renameProject(slug, currentName){
+  const name = prompt('New name:', currentName);
+  if(name===null) return;
+  const trimmed = name.trim();
+  if(!trimmed) return;
+  try{
+    const { error } = await supa.from('sop_projects').update({ name: trimmed, updated_at: new Date().toISOString() }).eq('slug', slug);
+    if(error) throw error;
+    await loadProjects();
+  }catch(e){
+    alert('Rename failed: ' + (e.message || e));
+  }
+}
+
+async function deleteProject(slug, name){
+  if(!confirm(`Delete "${name}"? This permanently removes the project and its data. Cannot be undone.`)) return;
+  try{
+    // Delete document first, then index row
+    await supa.from('sop_documents').delete().eq('slug', slug);
+    const { error } = await supa.from('sop_projects').delete().eq('slug', slug);
+    if(error) throw error;
+    // Also wipe local cache for this slug
+    localStorage.removeItem('sop-cache-' + slug);
+    await loadProjects();
+  }catch(e){
+    alert('Delete failed: ' + (e.message || e));
+  }
+}
+
+/* ---------- utils ---------- */
+function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s).replace(/'/g,'&#39;'); }
+
+function timeAgo(iso){
+  if(!iso) return 'recently';
+  const then = new Date(iso).getTime();
+  const diff = Math.max(0, Date.now() - then);
+  const m = Math.floor(diff/60000);
+  if(m < 1) return 'just now';
+  if(m < 60) return `${m}m ago`;
+  const h = Math.floor(m/60);
+  if(h < 24) return `${h}h ago`;
+  const d = Math.floor(h/24);
+  if(d < 30) return `${d}d ago`;
+  const mo = Math.floor(d/30);
+  if(mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(mo/12)}y ago`;
+}
+
+// Bootstrap
+(async () => {
+  if(!creds){ showSetup(); setStatus('','Not configured'); return; }
+  await connect();
+})();
+</script>
+</body>
+</html>
