@@ -159,8 +159,11 @@
   .ms-col[data-stage="mvp"] h3{color:var(--c-yellow)}
   .ms-col[data-stage="v1"] h3{color:var(--c-blue)}
   .ms-col[data-stage="final"] h3{color:var(--c-green)}
-  .ms-item{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
-  .ms-item input{flex:1;font-size:13px}
+  .ms-item{display:flex;gap:8px;align-items:center;padding:2px 0;border-bottom:1px solid var(--border-soft)}
+  .ms-item:last-child{border-bottom:none}
+  .ms-item input{flex:1;font-size:13px;background:transparent;border:1px solid transparent;padding:6px 8px;color:#fff}
+  .ms-item input:hover{border-color:var(--border-soft)}
+  .ms-item input:focus{border-color:var(--accent);background:var(--bg)}
   .ms-item button{padding:4px 8px;font-size:11px}
 
   /* WBS */
