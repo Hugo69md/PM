@@ -226,6 +226,12 @@
   .notice{padding:12px 14px;background:var(--bg-elev-2);border:1px solid var(--border-soft);border-radius:8px;font-size:12px;color:var(--text-dim);margin-bottom:14px}
   .notice b{color:var(--accent);font-weight:500}
 
+  /* Photos */
+  .photo-grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+  .photo-item{position:relative;width:140px;height:105px;border-radius:8px;overflow:hidden;border:1px solid var(--border-soft)}
+  .photo-item img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo-item .del-photo{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border:none;border-radius:4px;color:#fff;font-size:12px;padding:2px 7px;cursor:pointer;line-height:1.6}
+
   /* Scrollbar */
   *::-webkit-scrollbar{width:8px;height:8px}
   *::-webkit-scrollbar-track{background:transparent}
@@ -326,6 +332,8 @@ const DEFAULT_STATE = {
   constraints: { tags:['time','money'], note:'' },
   risks: [],                // {id,desc,likelihood,impact,mitigation}
   brainstorm: '',
+  brainstormPhotos: [],
+  graphPhotos: [],
   techstack: '',
   milestones: { mvp:[], v1:[], final:[] },  // each: {id,text}
   wbs: { mvp:[], v1:[], final:[] },         // each: {id,task,owner,est,milestoneId}
@@ -671,11 +679,56 @@ function renderRisks(el){
 function addRisk(){ state.risks.push({id:uid(),desc:'',likelihood:'med',impact:'med',mitigation:''}); save(); render(); }
 function delRisk(id){ state.risks = state.risks.filter(x=>x.id!==id); save(); render(); }
 
+function photoGridHtml(arr, section){
+  if(!arr.length) return '';
+  return `<div class="photo-grid">${arr.map(p=>`
+    <div class="photo-item">
+      <img src="${p.data}" alt="${escapeAttr(p.name)}">
+      <button class="del-photo" onclick="delPhoto('${section}','${p.id}')">×</button>
+    </div>`).join('')}</div>`;
+}
+
+function addPhotos(section){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+  inp.onchange=()=>{
+    const files = Array.from(inp.files);
+    let done=0;
+    files.forEach(f=>{
+      const reader = new FileReader();
+      reader.onload=ev=>{
+        const arr = section==='graph' ? state.graphPhotos : state.brainstormPhotos;
+        arr.push({id:uid(), name:f.name, data:ev.target.result});
+        done++;
+        if(done===files.length){ save(); render(); }
+      };
+      reader.readAsDataURL(f);
+    });
+  };
+  inp.click();
+}
+
+function delPhoto(section, id){
+  if(section==='graph') state.graphPhotos = state.graphPhotos.filter(p=>p.id!==id);
+  else state.brainstormPhotos = state.brainstormPhotos.filter(p=>p.id!==id);
+  save(); render();
+}
+
 function renderBrainstorm(el){
   el.innerHTML = `
-    <div class="hint">Free-form. Bullet ideas, sketches in text, links, half-baked thoughts.</div>
-    <textarea id="i-brain" style="min-height:220px" placeholder="• idea 1&#10;• idea 2&#10;• …">${escapeHtml(state.brainstorm)}</textarea>`;
+    <div class="hint">Free-form ideas, visual graph, and photos — all in one place.</div>
+    <textarea id="i-brain" style="min-height:180px" placeholder="• idea 1&#10;• idea 2&#10;• …">${escapeHtml(state.brainstorm)}</textarea>
+    <div style="margin-top:16px">
+      <h5 style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px">Photos</h5>
+      <button onclick="addPhotos('brainstorm')">+ Add photos</button>
+      ${photoGridHtml(state.brainstormPhotos,'brainstorm')}
+    </div>
+    <div style="margin-top:20px">
+      <h5 style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px">Graph Canvas</h5>
+      ${graphCanvasHtml(brainCtx)}
+    </div>`;
   document.getElementById('i-brain').addEventListener('input',e=>{state.brainstorm=e.target.value;save()});
+  wireGraphCanvas(el, brainCtx);
 }
 
 function renderTechStack(el){
@@ -765,110 +818,122 @@ function delWbs(stage,id){
 }
 
 /* ----------------- GRAPH ----------------- */
-let graphCtx = { taskId:null, tool:'select', color:'#5aa8ff', selectedNode:null, selectedEdge:null, arrowFrom:null, dragging:null, dragOffset:null };
+let graphCtx = { svgId:'g-svg', markerId:'arrow-end-g', graphKey:null, taskId:null, labelWrapId:'g-label-wrap', labelInpId:'g-label-inp', tool:'select', color:'#5aa8ff', selectedNode:null, selectedEdge:null, arrowFrom:null, dragging:null, dragOffset:null };
+let brainCtx  = { svgId:'bg-svg', markerId:'arrow-end-bg', graphKey:'__brainstorm__', labelWrapId:'bg-label-wrap', labelInpId:'bg-label-inp', tool:'select', color:'#5aa8ff', selectedNode:null, selectedEdge:null, arrowFrom:null, dragging:null, dragOffset:null };
 
 function allTasks(){
   return ['mvp','v1','final'].flatMap(s=>state.wbs[s].map(t=>({...t,stage:s})));
 }
 
-function renderGraph(el){
-  const tasks = allTasks();
-  if(!graphCtx.taskId && tasks.length) graphCtx.taskId = tasks[0].id;
-  const colors = [
-    ['c-red','var(--c-red)'],['c-orange','var(--c-orange)'],['c-yellow','var(--c-yellow)'],
-    ['c-green','var(--c-green)'],['c-blue','var(--c-blue)'],['c-indigo','var(--c-indigo)'],
-    ['c-violet','var(--c-violet)'],['c-black','var(--c-black)'],['c-white','var(--c-white)']
-  ];
-  el.innerHTML = `
-    <div class="hint">Pick a task, choose a shape tool and click the canvas to add shapes. Select a shape to rename it in the sidebar. Use the arrow tool to connect shapes.</div>
+function graphCanvasHtml(ctx){
+  const colors = ['var(--c-red)','var(--c-orange)','var(--c-yellow)','var(--c-green)','var(--c-blue)','var(--c-indigo)','var(--c-violet)','var(--c-black)','var(--c-white)'];
+  const ctxName = ctx === graphCtx ? 'graphCtx' : 'brainCtx';
+  return `
     <div class="graph-wrap">
       <div class="graph-side">
-        <div class="task-pick">
-          <label>Task</label>
-          <select id="g-task">
-            ${tasks.length ? tasks.map(t=>`<option value="${t.id}" ${graphCtx.taskId===t.id?'selected':''}>[${t.stage.toUpperCase()}] ${escapeHtml(t.task||'(unnamed)')}</option>`).join('') : '<option>No tasks yet — add some in WBS</option>'}
-          </select>
-        </div>
         <h5>Shape</h5>
         <div class="shape-pick">
-          <div class="shape-btn ${graphCtx.tool==='rect'?'active':''}" data-tool="rect" title="Rectangle">▭</div>
-          <div class="shape-btn ${graphCtx.tool==='circle'?'active':''}" data-tool="circle" title="Circle">●</div>
-          <div class="shape-btn ${graphCtx.tool==='diamond'?'active':''}" data-tool="diamond" title="Diamond">◆</div>
+          <div class="shape-btn ${ctx.tool==='rect'?'active':''}" data-tool="rect" title="Rectangle">▭</div>
+          <div class="shape-btn ${ctx.tool==='circle'?'active':''}" data-tool="circle" title="Circle">●</div>
+          <div class="shape-btn ${ctx.tool==='diamond'?'active':''}" data-tool="diamond" title="Diamond">◆</div>
         </div>
         <h5>Arrow</h5>
         <div class="shape-pick" style="grid-template-columns:1fr 1fr">
-          <div class="shape-btn ${graphCtx.tool==='arrow'?'active':''}" data-tool="arrow" title="Arrow">→</div>
-          <div class="shape-btn ${graphCtx.tool==='select'?'active':''}" data-tool="select" title="Select">↖</div>
+          <div class="shape-btn ${ctx.tool==='arrow'?'active':''}" data-tool="arrow" title="Arrow">→</div>
+          <div class="shape-btn ${ctx.tool==='select'?'active':''}" data-tool="select" title="Select">↖</div>
         </div>
         <h5>Color</h5>
         <div class="palette">
-          ${colors.map(([k,v])=>`<div class="swatch ${graphCtx.color===v?'active':''}" style="background:${v}" data-color="${v}"></div>`).join('')}
+          ${colors.map(v=>`<div class="swatch ${ctx.color===v?'active':''}" style="background:${v}" data-color="${v}"></div>`).join('')}
         </div>
-        <div id="g-label-wrap" style="display:none">
+        <div id="${ctx.labelWrapId}" style="display:none">
           <h5>Label</h5>
-          <input id="g-label-inp" type="text" placeholder="Shape label" style="width:100%;margin-bottom:8px">
+          <input id="${ctx.labelInpId}" type="text" placeholder="Shape label" style="width:100%;margin-bottom:8px">
         </div>
-        <button class="danger" style="width:100%" onclick="deleteSelected()">Delete selected</button>
-        <button style="width:100%;margin-top:6px" onclick="clearGraph()">Clear canvas</button>
+        <button class="danger" style="width:100%" onclick="deleteSelected(${ctxName})">Delete selected</button>
+        <button style="width:100%;margin-top:6px" onclick="clearGraph(${ctxName})">Clear canvas</button>
       </div>
       <div class="graph-canvas">
-        <svg id="g-svg" class="tool-${graphCtx.tool}" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet">
+        <svg id="${ctx.svgId}" class="tool-${ctx.tool}" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet">
           <defs>
-            <marker id="arrow-end" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <marker id="${ctx.markerId}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#fff"/>
             </marker>
           </defs>
         </svg>
       </div>
     </div>`;
+}
 
-  document.getElementById('g-task').addEventListener('change',e=>{
-    graphCtx.taskId = e.target.value; graphCtx.selectedNode=null; graphCtx.selectedEdge=null;
-    drawGraph();
-  });
+function wireGraphCanvas(el, ctx){
   el.querySelectorAll('.shape-btn').forEach(b=>{
     b.addEventListener('click',()=>{
-      graphCtx.tool = b.dataset.tool;
-      graphCtx.arrowFrom = null;
+      ctx.tool = b.dataset.tool;
+      ctx.arrowFrom = null;
       el.querySelectorAll('.shape-btn').forEach(x=>x.classList.toggle('active',x===b));
-      document.getElementById('g-svg').setAttribute('class',`tool-${graphCtx.tool}`);
+      document.getElementById(ctx.svgId).setAttribute('class',`tool-${ctx.tool}`);
     });
   });
   el.querySelectorAll('.swatch').forEach(s=>{
     s.addEventListener('click',()=>{
-      graphCtx.color = s.dataset.color;
+      ctx.color = s.dataset.color;
       el.querySelectorAll('.swatch').forEach(x=>x.classList.toggle('active',x===s));
     });
   });
-
-  document.getElementById('g-label-inp').addEventListener('input', e => {
-    const g = ensureGraph(); if(!g) return;
-    const n = g.nodes.find(x => x.id === graphCtx.selectedNode);
-    if(n){ n.label = e.target.value; save(); drawGraph(); }
+  document.getElementById(ctx.labelInpId).addEventListener('input', e=>{
+    const g = ensureGraph(ctx); if(!g) return;
+    const n = g.nodes.find(x=>x.id===ctx.selectedNode);
+    if(n){ n.label = e.target.value; save(); drawGraph(ctx); }
   });
-
-  setupGraphSvg();
-  drawGraph();
+  setupGraphSvg(ctx);
+  drawGraph(ctx);
 }
 
-function ensureGraph(){
-  if(!graphCtx.taskId) return null;
-  if(!state.graphs[graphCtx.taskId]) state.graphs[graphCtx.taskId] = {nodes:[],edges:[]};
-  return state.graphs[graphCtx.taskId];
+function renderGraph(el){
+  const ctx = graphCtx;
+  const tasks = allTasks();
+  if(!ctx.taskId && tasks.length) ctx.taskId = tasks[0].id;
+  el.innerHTML = `
+    <div class="hint">Pick a task, choose a shape tool and click the canvas to add shapes. Select a shape to rename it in the sidebar. Use the arrow tool to connect shapes.</div>
+    <div class="task-pick" style="margin-bottom:12px">
+      <label>Task</label>
+      <select id="g-task">
+        ${tasks.length ? tasks.map(t=>`<option value="${t.id}" ${ctx.taskId===t.id?'selected':''}>[${t.stage.toUpperCase()}] ${escapeHtml(t.task||'(unnamed)')}</option>`).join('') : '<option>No tasks yet — add some in WBS</option>'}
+      </select>
+    </div>
+    ${graphCanvasHtml(ctx)}
+    <div style="margin-top:18px">
+      <h5 style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px">Photos</h5>
+      <button onclick="addPhotos('graph')">+ Add photos</button>
+      ${photoGridHtml(state.graphPhotos,'graph')}
+    </div>`;
+
+  document.getElementById('g-task').addEventListener('change',e=>{
+    ctx.taskId = e.target.value; ctx.selectedNode=null; ctx.selectedEdge=null;
+    drawGraph(ctx);
+  });
+  wireGraphCanvas(el, ctx);
 }
 
-function setupGraphSvg(){
-  const svg = document.getElementById('g-svg');
+function ensureGraph(ctx){
+  const key = ctx.graphKey || ctx.taskId;
+  if(!key) return null;
+  if(!state.graphs[key]) state.graphs[key] = {nodes:[],edges:[]};
+  return state.graphs[key];
+}
+
+function setupGraphSvg(ctx){
+  const svg = document.getElementById(ctx.svgId);
   if(!svg) return;
   svg.addEventListener('click',e=>{
-    if(e.target !== svg) return; // only background clicks
-    const g = ensureGraph(); if(!g) return;
+    if(e.target !== svg) return;
+    const g = ensureGraph(ctx); if(!g) return;
     const pt = svgPoint(svg,e);
-    if(['rect','circle','diamond'].includes(graphCtx.tool)){
-      g.nodes.push({id:uid(),shape:graphCtx.tool,x:pt.x,y:pt.y,w:120,h:60,color:graphCtx.color,label:'Label'});
-      save(); drawGraph();
-    } else if(graphCtx.tool==='select'){
-      graphCtx.selectedNode = null; graphCtx.selectedEdge = null; drawGraph();
+    if(['rect','circle','diamond'].includes(ctx.tool)){
+      g.nodes.push({id:uid(),shape:ctx.tool,x:pt.x,y:pt.y,w:120,h:60,color:ctx.color,label:'Label'});
+      save(); drawGraph(ctx);
+    } else if(ctx.tool==='select'){
+      ctx.selectedNode = null; ctx.selectedEdge = null; drawGraph(ctx);
     }
   });
 }
@@ -888,14 +953,12 @@ function edgePt(n, ox, oy){
   return {x: n.x + nx*t, y: n.y + ny*t};
 }
 
-function drawGraph(){
-  const svg = document.getElementById('g-svg');
+function drawGraph(ctx){
+  const svg = document.getElementById(ctx.svgId);
   if(!svg) return;
-  // clear except defs
   Array.from(svg.children).forEach(c=>{ if(c.tagName!=='defs') c.remove(); });
-  const g = ensureGraph(); if(!g) return;
+  const g = ensureGraph(ctx); if(!g) return;
 
-  // edges first
   g.edges.forEach(ed=>{
     const a = g.nodes.find(n=>n.id===ed.from);
     const b = g.nodes.find(n=>n.id===ed.to);
@@ -906,20 +969,19 @@ function drawGraph(){
     line.setAttribute('x1',p1.x); line.setAttribute('y1',p1.y);
     line.setAttribute('x2',p2.x); line.setAttribute('y2',p2.y);
     line.setAttribute('stroke','#fff');
-    line.setAttribute('class','arrow'+(graphCtx.selectedEdge===ed.id?' selected':''));
+    line.setAttribute('class','arrow'+(ctx.selectedEdge===ed.id?' selected':''));
     line.setAttribute('style','color:#fff');
-    line.setAttribute('marker-end','url(#arrow-end)');
+    line.setAttribute('marker-end',`url(#${ctx.markerId})`);
     line.addEventListener('click',e=>{
       e.stopPropagation();
-      graphCtx.selectedEdge = ed.id; graphCtx.selectedNode = null; drawGraph();
+      ctx.selectedEdge = ed.id; ctx.selectedNode = null; drawGraph(ctx);
     });
     svg.appendChild(line);
   });
 
-  // nodes
   g.nodes.forEach(n=>{
     const grp = document.createElementNS('http://www.w3.org/2000/svg','g');
-    grp.setAttribute('class','node'+(graphCtx.selectedNode===n.id?' selected':''));
+    grp.setAttribute('class','node'+(ctx.selectedNode===n.id?' selected':''));
     grp.setAttribute('transform',`translate(${n.x},${n.y})`);
 
     let shape;
@@ -949,40 +1011,37 @@ function drawGraph(){
     text.textContent = n.label;
     grp.appendChild(text);
 
-    // events
     grp.addEventListener('mousedown',e=>{
       e.stopPropagation();
-      if(graphCtx.tool==='arrow'){
-        if(!graphCtx.arrowFrom){
-          graphCtx.arrowFrom = n.id;
-        } else if(graphCtx.arrowFrom !== n.id){
-          g.edges.push({id:uid(),from:graphCtx.arrowFrom,to:n.id,color:graphCtx.color});
-          graphCtx.arrowFrom = null;
-          save(); drawGraph();
+      if(ctx.tool==='arrow'){
+        if(!ctx.arrowFrom){
+          ctx.arrowFrom = n.id;
+        } else if(ctx.arrowFrom !== n.id){
+          g.edges.push({id:uid(),from:ctx.arrowFrom,to:n.id,color:ctx.color});
+          ctx.arrowFrom = null;
+          save(); drawGraph(ctx);
         }
-      } else if(graphCtx.tool==='select' || ['rect','circle','diamond'].includes(graphCtx.tool)){
-        graphCtx.selectedNode = n.id; graphCtx.selectedEdge = null;
-        const svg = document.getElementById('g-svg');
+      } else if(ctx.tool==='select' || ['rect','circle','diamond'].includes(ctx.tool)){
+        ctx.selectedNode = n.id; ctx.selectedEdge = null;
         const start = svgPoint(svg,e);
-        graphCtx.dragging = n.id;
-        graphCtx.dragOffset = {x:start.x - n.x, y:start.y - n.y};
-        drawGraph();
+        ctx.dragging = n.id;
+        ctx.dragOffset = {x:start.x - n.x, y:start.y - n.y};
+        drawGraph(ctx);
       }
     });
     grp.addEventListener('dblclick',e=>{
       e.stopPropagation();
       const v = prompt('Label:', n.label);
-      if(v!==null){ n.label = v; save(); drawGraph(); }
+      if(v!==null){ n.label = v; save(); drawGraph(ctx); }
     });
 
     svg.appendChild(grp);
   });
 
-  // sync label input with selected node
-  const labelWrap = document.getElementById('g-label-wrap');
-  const labelInp = document.getElementById('g-label-inp');
+  const labelWrap = document.getElementById(ctx.labelWrapId);
+  const labelInp  = document.getElementById(ctx.labelInpId);
   if(labelWrap && labelInp){
-    const sel = g.nodes.find(n=>n.id===graphCtx.selectedNode);
+    const sel = g.nodes.find(n=>n.id===ctx.selectedNode);
     if(sel){
       labelWrap.style.display = '';
       if(document.activeElement !== labelInp) labelInp.value = sel.label;
@@ -991,41 +1050,39 @@ function drawGraph(){
     }
   }
 
-  // attach drag handlers on svg if not yet
   if(!svg._dragWired){
     svg.addEventListener('mousemove',e=>{
-      if(!graphCtx.dragging) return;
-      const g = ensureGraph(); if(!g) return;
-      const n = g.nodes.find(x=>x.id===graphCtx.dragging); if(!n) return;
+      if(!ctx.dragging) return;
+      const g = ensureGraph(ctx); if(!g) return;
+      const n = g.nodes.find(x=>x.id===ctx.dragging); if(!n) return;
       const pt = svgPoint(svg,e);
-      n.x = pt.x - graphCtx.dragOffset.x;
-      n.y = pt.y - graphCtx.dragOffset.y;
-      drawGraph();
+      n.x = pt.x - ctx.dragOffset.x;
+      n.y = pt.y - ctx.dragOffset.y;
+      drawGraph(ctx);
     });
-    const stopDrag = () => {
-      if(graphCtx.dragging){ save(); graphCtx.dragging=null; graphCtx.dragOffset=null; }
-    };
+    const stopDrag = ()=>{ if(ctx.dragging){ save(); ctx.dragging=null; ctx.dragOffset=null; } };
     svg.addEventListener('mouseup',stopDrag);
     svg.addEventListener('mouseleave',stopDrag);
     svg._dragWired = true;
   }
 }
 
-function deleteSelected(){
-  const g = ensureGraph(); if(!g) return;
-  if(graphCtx.selectedNode){
-    g.nodes = g.nodes.filter(n=>n.id!==graphCtx.selectedNode);
-    g.edges = g.edges.filter(e=>e.from!==graphCtx.selectedNode && e.to!==graphCtx.selectedNode);
-    graphCtx.selectedNode = null;
-  } else if(graphCtx.selectedEdge){
-    g.edges = g.edges.filter(e=>e.id!==graphCtx.selectedEdge);
-    graphCtx.selectedEdge = null;
+function deleteSelected(ctx){
+  const g = ensureGraph(ctx); if(!g) return;
+  if(ctx.selectedNode){
+    g.nodes = g.nodes.filter(n=>n.id!==ctx.selectedNode);
+    g.edges = g.edges.filter(e=>e.from!==ctx.selectedNode && e.to!==ctx.selectedNode);
+    ctx.selectedNode = null;
+  } else if(ctx.selectedEdge){
+    g.edges = g.edges.filter(e=>e.id!==ctx.selectedEdge);
+    ctx.selectedEdge = null;
   }
-  save(); drawGraph();
+  save(); drawGraph(ctx);
 }
-function clearGraph(){
-  if(!confirm('Clear the entire canvas for this task?')) return;
-  if(graphCtx.taskId){ state.graphs[graphCtx.taskId] = {nodes:[],edges:[]}; save(); drawGraph(); }
+function clearGraph(ctx){
+  if(!confirm('Clear the entire canvas?')) return;
+  const key = ctx.graphKey || ctx.taskId;
+  if(key){ state.graphs[key] = {nodes:[],edges:[]}; save(); drawGraph(ctx); }
 }
 
 /* ----------------- GANTT ----------------- */
