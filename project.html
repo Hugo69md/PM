@@ -780,7 +780,7 @@ function renderGraph(el){
     ['c-violet','var(--c-violet)'],['c-black','var(--c-black)'],['c-white','var(--c-white)']
   ];
   el.innerHTML = `
-    <div class="hint">Pick a task, then choose a shape or arrow tool and click on the canvas. Drag shapes to reposition. Double-click a shape to rename.</div>
+    <div class="hint">Pick a task, choose a shape tool and click the canvas to add shapes. Select a shape to rename it in the sidebar. Use the arrow tool to connect shapes.</div>
     <div class="graph-wrap">
       <div class="graph-side">
         <div class="task-pick">
@@ -804,14 +804,18 @@ function renderGraph(el){
         <div class="palette">
           ${colors.map(([k,v])=>`<div class="swatch ${graphCtx.color===v?'active':''}" style="background:${v}" data-color="${v}"></div>`).join('')}
         </div>
+        <div id="g-label-wrap" style="display:none">
+          <h5>Label</h5>
+          <input id="g-label-inp" type="text" placeholder="Shape label" style="width:100%;margin-bottom:8px">
+        </div>
         <button class="danger" style="width:100%" onclick="deleteSelected()">Delete selected</button>
         <button style="width:100%;margin-top:6px" onclick="clearGraph()">Clear canvas</button>
       </div>
       <div class="graph-canvas">
         <svg id="g-svg" class="tool-${graphCtx.tool}" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet">
           <defs>
-            <marker id="arrow-end" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            <marker id="arrow-end" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#fff"/>
             </marker>
           </defs>
         </svg>
@@ -835,6 +839,12 @@ function renderGraph(el){
       graphCtx.color = s.dataset.color;
       el.querySelectorAll('.swatch').forEach(x=>x.classList.toggle('active',x===s));
     });
+  });
+
+  document.getElementById('g-label-inp').addEventListener('input', e => {
+    const g = ensureGraph(); if(!g) return;
+    const n = g.nodes.find(x => x.id === graphCtx.selectedNode);
+    if(n){ n.label = e.target.value; save(); drawGraph(); }
   });
 
   setupGraphSvg();
@@ -869,6 +879,15 @@ function svgPoint(svg,evt){
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
 
+function edgePt(n, ox, oy){
+  const dx = ox - n.x, dy = oy - n.y;
+  const len = Math.hypot(dx, dy);
+  if(len < 1) return {x:n.x, y:n.y};
+  const nx = dx/len, ny = dy/len;
+  const t = Math.min(nx ? (n.w/2)/Math.abs(nx) : Infinity, ny ? (n.h/2)/Math.abs(ny) : Infinity);
+  return {x: n.x + nx*t, y: n.y + ny*t};
+}
+
 function drawGraph(){
   const svg = document.getElementById('g-svg');
   if(!svg) return;
@@ -881,12 +900,14 @@ function drawGraph(){
     const a = g.nodes.find(n=>n.id===ed.from);
     const b = g.nodes.find(n=>n.id===ed.to);
     if(!a||!b) return;
+    const p1 = edgePt(a, b.x, b.y);
+    const p2 = edgePt(b, a.x, a.y);
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',a.x); line.setAttribute('y1',a.y);
-    line.setAttribute('x2',b.x); line.setAttribute('y2',b.y);
-    line.setAttribute('stroke',ed.color);
+    line.setAttribute('x1',p1.x); line.setAttribute('y1',p1.y);
+    line.setAttribute('x2',p2.x); line.setAttribute('y2',p2.y);
+    line.setAttribute('stroke','#fff');
     line.setAttribute('class','arrow'+(graphCtx.selectedEdge===ed.id?' selected':''));
-    line.setAttribute('style',`color:${ed.color}`);
+    line.setAttribute('style','color:#fff');
     line.setAttribute('marker-end','url(#arrow-end)');
     line.addEventListener('click',e=>{
       e.stopPropagation();
@@ -956,6 +977,19 @@ function drawGraph(){
 
     svg.appendChild(grp);
   });
+
+  // sync label input with selected node
+  const labelWrap = document.getElementById('g-label-wrap');
+  const labelInp = document.getElementById('g-label-inp');
+  if(labelWrap && labelInp){
+    const sel = g.nodes.find(n=>n.id===graphCtx.selectedNode);
+    if(sel){
+      labelWrap.style.display = '';
+      if(document.activeElement !== labelInp) labelInp.value = sel.label;
+    } else {
+      labelWrap.style.display = 'none';
+    }
+  }
 
   // attach drag handlers on svg if not yet
   if(!svg._dragWired){
